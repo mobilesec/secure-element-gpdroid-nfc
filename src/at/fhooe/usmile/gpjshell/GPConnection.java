@@ -19,6 +19,7 @@ import java.util.List;
 import javax.smartcardio.Card;
 import javax.smartcardio.CardChannel;
 import javax.smartcardio.CardException;
+import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
@@ -32,9 +33,11 @@ import net.sourceforge.gpj.cardservices.exceptions.GPDeleteException;
 import net.sourceforge.gpj.cardservices.exceptions.GPInstallForLoadException;
 import net.sourceforge.gpj.cardservices.exceptions.GPLoadException;
 import net.sourceforge.gpj.cardservices.exceptions.GPSecurityDomainSelectionException;
+import net.sourceforge.gpj.cardservices.interfaces.NfcTerminal;
 import net.sourceforge.gpj.cardservices.interfaces.OpenMobileAPITerminal;
 import android.content.Context;
 import android.content.Intent;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import at.fhooe.usmile.gpjshell.objects.GPAppletData;
 import at.fhooe.usmile.gpjshell.objects.GPChannelSet;
@@ -236,29 +239,53 @@ public class GPConnection {
 						+ " Applets.";
 	}
 	/**
-	 * Method that performs the given GPCommand
+	 * Method that acquires a CardChannel from the given terminal and performs
+	 * the given GPCommand on it
+	 * 
 	 * @param keyset
 	 * @param channelSet
 	 * @param _cmd
 	 * @return
 	 */
-	public String performCommand(OpenMobileAPITerminal _term, GPKeyset keyset, GPChannelSet channelSet,
+	public String performCommand(CardTerminal _term, GPKeyset keyset, GPChannelSet channelSet,
 			GPCommand _cmd) {
 		String ret = "";
 		try {
 			Card c = null;
-			boolean closeConn = true;
-			
-			_term.setReader(_cmd.getSeekReader());
-			c = _term.connect("*");
 
-			System.out
-					.println("Found card in terminal: " + _term.getName());
+			if (_term instanceof OpenMobileAPITerminal) {
+				((OpenMobileAPITerminal) _term).setReader(_cmd.getSeekReader());
+			}
+			
+			c = _term.connect("*");
+			System.out.println("Found card in terminal: " + _term.getName());
 			if (c.getATR() != null) {
 				System.out.println("ATR: "
 						+ GPUtil.byteArrayToString(c.getATR().getBytes()));
 			}
 			CardChannel channel = c.openLogicalChannel();
+			return performCommand(channel, keyset, channelSet, _cmd);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
+	/**
+	 * Method that performs the given GPCommand on an channel
+	 * 
+	 * @param keyset
+	 * @param channelSet
+	 * @param _cmd
+	 * @return
+	 */
+	public String performCommand(CardChannel channel, GPKeyset keyset,
+			GPChannelSet channelSet, GPCommand _cmd) {
+		String ret = "";
+		try {
+
+			boolean closeConn = true;
 
 			initializeKeys(channel, keyset);
 			open();
@@ -312,9 +339,9 @@ public class GPConnection {
 				break;
 			}
 
-			if(closeConn){
-				channel.close();	
-				c.disconnect(true);				
+			if (closeConn) {
+				channel.close();
+				// c.disconnect(true);
 			}
 		} catch (GPSecurityDomainSelectionException e) {
 			ret = "GPSecurityDomainSelectionException " + e.getLocalizedMessage();

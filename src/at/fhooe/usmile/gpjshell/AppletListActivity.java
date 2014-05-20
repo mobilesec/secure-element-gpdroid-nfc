@@ -17,13 +17,16 @@ import java.util.List;
 import net.sourceforge.gpj.cardservices.AID;
 import net.sourceforge.gpj.cardservices.AIDRegistryEntry;
 import net.sourceforge.gpj.cardservices.GPUtil;
-import net.sourceforge.gpj.cardservices.interfaces.OpenMobileAPITerminal;
+//import net.sourceforge.gpj.cardservices.interfaces.OpenMobileAPITerminal;
 
-import org.simalliance.openmobileapi.SEService;
+//import org.simalliance.openmobileapi.SEService;
 
 import android.app.Activity;
 import android.app.DialogFragment;
+import android.content.Context;
 import android.content.Intent;
+import android.nfc.NfcAdapter;
+import android.nfc.NfcManager;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -33,7 +36,7 @@ import at.fhooe.usmile.gpjshell.MainActivity.APDU_COMMAND;
 import at.fhooe.usmile.gpjshell.objects.GPChannelSet;
 import at.fhooe.usmile.gpjshell.objects.GPKeyset;
 
-public class AppletListActivity extends Activity implements AppletDetailActivity.NoticeAppletEventListener, SEService.CallBack{
+public class AppletListActivity extends Activity implements AppletDetailActivity.NoticeAppletEventListener { //, SEService.CallBack{
 
 	private static final String LOG_TAG = "AppletListActivity";
 	public static final String EXTRA_CHANNELSET = "extra_channelset";
@@ -41,7 +44,7 @@ public class AppletListActivity extends Activity implements AppletDetailActivity
 	public static final String EXTRA_SEEKREADER = "extra_reader";
 	private List<String> appletNames = null;
 	private ArrayAdapter<String> mListAdapter;
-	private OpenMobileAPITerminal mTerminal;
+//	private OpenMobileAPITerminal mTerminal;
 	private GPKeyset mKeySet;
 	private GPChannelSet mChannelSet;
 	private int mSeekReader;
@@ -77,15 +80,16 @@ public class AppletListActivity extends Activity implements AppletDetailActivity
 	@Override
 	protected void onResume() {
 		super.onResume();
-		mTerminal = new OpenMobileAPITerminal(this, this);
+	//	mTerminal = new OpenMobileAPITerminal(this, this);
+		
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		if (mTerminal != null) {
-			mTerminal.shutdown();
-		}
+//		if (mTerminal != null) {
+//			mTerminal.shutdown();
+//		}
 	}
 	private void returnToHome(){
 		Intent homeIntent= new Intent(this, MainActivity.class);
@@ -143,8 +147,8 @@ public class AppletListActivity extends Activity implements AppletDetailActivity
 	public void onDialogDeleteClick(DialogFragment dialog) {
 		AID delAID= GPConnection.getInstance(getApplicationContext()).getSelectedApplet().getAID();
 		GPCommand cmd = new GPCommand(APDU_COMMAND.APDU_DELETE_SELECTED_APPLET, mSeekReader, null, (byte)0, null);
-		GPConnection.getInstance(getApplicationContext()).performCommand(mTerminal, mKeySet, mChannelSet, cmd);
-		
+//		GPConnection.getInstance(getApplicationContext()).performCommand(mTerminal, mKeySet, mChannelSet, cmd);
+	
 		MainActivity.log().log(LOG_TAG, "Successfully removed: "+delAID);
 		
 		/**
@@ -163,10 +167,10 @@ public class AppletListActivity extends Activity implements AppletDetailActivity
 		
 	}
 
-	@Override
-	public void serviceConnected(SEService service) {
-		// TODO Auto-generated method stub
-		
-	}
+//	@Override
+//	public void serviceConnected(SEService service) {
+//		// TODO Auto-generated method stub
+//		
+//	}
 
 }

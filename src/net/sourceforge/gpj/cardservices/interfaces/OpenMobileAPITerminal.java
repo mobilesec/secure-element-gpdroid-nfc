@@ -22,7 +22,7 @@ import org.simalliance.openmobileapi.SEService;
 import android.content.Context;
 import android.util.Log;
 
-public class OpenMobileAPITerminal extends CardTerminal implements SEService.CallBack{
+public class OpenMobileAPITerminal extends GPTerminal implements SEService.CallBack{
 
 	private static final String TERMINAL_NAME = "OpenMobile API for SE access";
 

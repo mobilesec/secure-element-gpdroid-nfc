@@ -17,15 +17,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import javax.smartcardio.CardTerminal;
+
 import net.sourceforge.gpj.cardservices.GlobalPlatformService;
+import net.sourceforge.gpj.cardservices.interfaces.GPTerminal;
+import net.sourceforge.gpj.cardservices.interfaces.NfcTerminal;
 import net.sourceforge.gpj.cardservices.interfaces.OpenMobileAPITerminal;
 
 import org.simalliance.openmobileapi.Reader;
 import org.simalliance.openmobileapi.SEService;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
+import android.nfc.NfcAdapter;
+import android.nfc.NfcManager;
+import android.nfc.Tag;
+import android.nfc.tech.MifareClassic;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -48,7 +62,7 @@ import at.fhooe.usmile.gpjshell.objects.GPConstants;
 import at.fhooe.usmile.gpjshell.objects.GPKeyset;
 
 public class MainActivity extends Activity implements SEService.CallBack,
-		TCPFileResultListener {
+		NfcTerminal.Callback, TCPFileResultListener {
 
 	private final static String LOG_TAG = "GPJShell";
 	public final static int ACTIVITYRESULT_FILESELECTED = 101;
@@ -68,10 +82,11 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	private Button mButtonRemoveKeyset = null;
 	private Button mButtonRemoveChannelset = null;
 	private Button mButtonGetData = null;
+	private Button mButtonTestMifare = null;
 
 	private static LogMe MAIN_Log;
 
-	private OpenMobileAPITerminal mTerminal = null;
+	private GPTerminal mTerminal = null;
 	private Button buttonListApplet, buttonSelectApplet;
 
 	private TCPConnection mTCPConnection = null;
@@ -90,13 +105,22 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	private int mP2 = 0;
 	private ConcurrentLinkedQueue<GPCommand> mCommandExecutionQueue = null;
 
+	// NFC
+	private NfcAdapter mNfcAdapter;
+	private static final int PENDING_INTENT_TECH_DISCOVERED = 1;
+	private boolean mWaitingForMfTest;
+	private static final int DIALOG_MF_WAIT_FOR_TAG = 1;
+	private static final int DIALOG_MF_WAIT_FOR_FINISH = 2;
+	private MifareTest mMifareTest = null;
+	private boolean mTerminalWaitingForTag;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		MAIN_Log = new LogMe();
 		mCommandExecutionQueue = new ConcurrentLinkedQueue<GPCommand>();
-		
+
 		mButtonGetData = (Button) findViewById(R.id.btn_get_data);
 
 		mFileNameView = (TextView) findViewById(R.id.text1);
@@ -166,22 +190,71 @@ public class MainActivity extends Activity implements SEService.CallBack,
 								"keyset name " + mKeysetAdapter.getItem(i));
 					}
 					mKeysetAdapter.remove(keyset.getDisplayName());
-					
+
 					Log.d(LOG_TAG, "keyset count" + mKeysetAdapter.getCount());
 					mKeysetAdapter.notifyDataSetChanged();
 				}
 			}
 		});
 
-		loadPreferences();
+		mButtonTestMifare = (Button) findViewById(R.id.btn_test_mf);
+		mButtonTestMifare.setOnClickListener(new View.OnClickListener() {
 
+			@Override
+			public void onClick(View v) {
+				mWaitingForMfTest = true;
+				MainActivity.this.showDialog(DIALOG_MF_WAIT_FOR_TAG);
+			}
+		});
+
+		loadPreferences();
 
 		mLog = (TextView) findViewById(R.id.log);
 		mLog.setMovementMethod(new ScrollingMovementMethod());
-		
-		MAIN_Log.d(LOG_TAG, "Start GPJ Shell");
-		//GlobalPlatformService.usage();
 
+		MAIN_Log.d(LOG_TAG, "Start GPJ Shell");
+		// GlobalPlatformService.usage();
+
+	}
+
+	protected Dialog onCreateDialog(int id, Bundle args) {
+		switch (id) {
+		case DIALOG_MF_WAIT_FOR_TAG:
+			return new AlertDialog.Builder(this)
+					.setTitle("Mifare Test")
+					.setMessage("Touch Mifare tag to start test")
+					.setCancelable(true)
+					.setOnCancelListener(
+							new DialogInterface.OnCancelListener() {
+
+								@Override
+								public void onCancel(DialogInterface dialog) {
+									mWaitingForMfTest = false;
+
+								}
+							}).create();
+
+		case DIALOG_MF_WAIT_FOR_FINISH:
+			return new AlertDialog.Builder(this)
+					.setTitle("Mifare Test")
+					.setMessage("Test running, please wait...")
+					.setCancelable(true)
+					.setOnCancelListener(
+							new DialogInterface.OnCancelListener() {
+
+								@Override
+								public void onCancel(DialogInterface dialog) {
+									MAIN_Log.d(LOG_TAG, "cancelled");
+									if (mMifareTest != null
+											&& mMifareTest.isRunning()) {
+										mMifareTest.cancel(true);
+
+									}
+								}
+							}).create();
+
+		}
+		return null;
 	}
 
 	private void loadPreferences() {
@@ -196,8 +269,28 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	@Override
 	protected void onResume() {
 		super.onResume();
-		mTerminal = new OpenMobileAPITerminal(this, this);
 
+		NfcManager nMan = (NfcManager) this
+				.getSystemService(Context.NFC_SERVICE);
+		mNfcAdapter = nMan.getDefaultAdapter();
+		PendingIntent pi = createPendingResult(PENDING_INTENT_TECH_DISCOVERED,
+				new Intent(), 0);
+		mNfcAdapter
+				.enableForegroundDispatch(
+						this,
+						pi,
+						new IntentFilter[] { new IntentFilter(
+								NfcAdapter.ACTION_TECH_DISCOVERED) },
+						new String[][] {
+								new String[] { android.nfc.tech.MifareClassic.class
+										.getName() },
+								new String[] { android.nfc.tech.IsoDep.class
+										.getName() } });
+
+		if(mTerminal == null) {
+		mTerminal = // new OpenMobileAPITerminal(this, this);
+				new NfcTerminal(this);
+		}
 		mTCPConnection = new TCPConnection(this, this);
 		Thread td = new Thread(mTCPConnection);
 		td.start();
@@ -210,6 +303,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 		if (mTerminal != null) {
 			mTerminal.shutdown();
 		}
+		mNfcAdapter.disableForegroundDispatch(this);
 		if (mTCPConnection != null) {
 			mTCPConnection.stopConnection();
 		}
@@ -235,7 +329,6 @@ public class MainActivity extends Activity implements SEService.CallBack,
 
 	@Override
 	public void onActivityResult(int _requestCode, int _resultCode, Intent _data) {
-
 		if (_resultCode == Activity.RESULT_OK) {
 
 			switch (_requestCode) {
@@ -315,13 +408,30 @@ public class MainActivity extends Activity implements SEService.CallBack,
 
 					@Override
 					public void run() {
-						Integer params[] = {mP1,mP2};
+						Integer params[] = { mP1, mP2 };
 						performCommand(APDU_COMMAND.APDU_GET_DATA,
 								mReaderSpinner.getSelectedItemPosition(), null,
 								(byte) 0, params);
 					}
 				}, 000);
+				break;
 
+			case PENDING_INTENT_TECH_DISCOVERED:
+
+				if (NfcAdapter.ACTION_TECH_DISCOVERED.equals(_data.getAction())) {
+					Tag tag = _data.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+					if (mWaitingForMfTest) {
+						mWaitingForMfTest = false;
+
+						runMifareTest(tag);
+					} else {
+						if (mTerminalWaitingForTag) {
+							mTerminalWaitingForTag = ((NfcTerminal) mTerminal)
+									.passTag(tag);
+							Log.d(LOG_TAG, "Card detected");
+						}
+					}
+				}
 				break;
 			default:
 				break;
@@ -331,6 +441,17 @@ public class MainActivity extends Activity implements SEService.CallBack,
 			MAIN_Log.d(LOG_TAG, "Result not valid");
 		}
 
+	}
+
+	private void runMifareTest(Tag tag) {
+
+		MifareClassic mf = MifareClassic.get(tag);
+
+		mMifareTest = new MifareTest(mf, this, MAIN_Log);
+
+		mMifareTest.execute();
+		dismissDialog(DIALOG_MF_WAIT_FOR_TAG);
+		showDialog(DIALOG_MF_WAIT_FOR_FINISH);
 	}
 
 	/**
@@ -393,6 +514,9 @@ public class MainActivity extends Activity implements SEService.CallBack,
 				Reader reader = _readers[i];
 
 				list.add(reader.getName());
+			}
+			if (_readers.length == 0) {
+				list.add("NFC Interface");
 			}
 			ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this,
 					android.R.layout.simple_spinner_item, list);
@@ -483,12 +607,15 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	}
 
 	public void serviceConnected(SEService _session) {
+		Reader[] readers = new Reader[0];
 
-		addReaderItemsOnSpinner(mTerminal.getReaders());
+		if (mTerminal instanceof OpenMobileAPITerminal) {
+
+			readers = ((OpenMobileAPITerminal) mTerminal).getReaders();
+		}
+		addReaderItemsOnSpinner(readers);
 
 		// --------- ADD DEFAULT KEYS TO DB -------------
-
-		Reader[] readers = mTerminal.getReaders();
 
 		KeysetDataSource keysetSource = new KeysetDataSource(this);
 		keysetSource.open();
@@ -502,6 +629,15 @@ public class MainActivity extends Activity implements SEService.CallBack,
 					GPUtils.byteArrayToString(GPConstants.DEFAULT_KEYS),
 					reader.getName());
 
+			keysetSource.insertKeyset(defaultKeyset);
+		}
+
+		if (readers.length == 0) {
+			GPKeyset defaultKeyset = new GPKeyset(-1, "Default", 0, 0,
+					GPUtils.byteArrayToString(GPConstants.DEFAULT_KEYS),
+					GPUtils.byteArrayToString(GPConstants.DEFAULT_KEYS),
+					GPUtils.byteArrayToString(GPConstants.DEFAULT_KEYS),
+					"NFC Interface");
 			keysetSource.insertKeyset(defaultKeyset);
 		}
 
@@ -521,12 +657,12 @@ public class MainActivity extends Activity implements SEService.CallBack,
 		channelSource.close();
 
 		// ------------ END ADDING DEFAULT ------------
-		
-		/** 
-		 * Check if there is a command to exeucte 
+
+		/**
+		 * Check if there is a command to exeucte
 		 */
-		while(!mCommandExecutionQueue.isEmpty()){
-			new PerformCommandTask().execute(mCommandExecutionQueue.poll());			
+		while (!mCommandExecutionQueue.isEmpty()) {
+			new PerformCommandTask().execute(mCommandExecutionQueue.poll());
 		}
 	}
 
@@ -544,17 +680,16 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	 *            necessary for installations, else (byte) 0
 	 */
 	private void performCommand(APDU_COMMAND _cmd, int _seekReader,
-			byte[] _params, byte _privileges, Object _cmdParam) {	    
-	    GPCommand c = new GPCommand(_cmd, _seekReader, _params, _privileges, _cmdParam);
-	    c.setReaderName(mReaderSpinner.getSelectedItem().toString());
-	    if(mTerminal.isConnected()){
-		    new PerformCommandTask().execute(c);
-	    }
-	    else{
-	    	mCommandExecutionQueue.add(c);
-	    }
+			byte[] _params, byte _privileges, Object _cmdParam) {
+		GPCommand c = new GPCommand(_cmd, _seekReader, _params, _privileges,
+				_cmdParam);
+		c.setReaderName(mReaderSpinner.getSelectedItem().toString());
+		if (mTerminal.isConnected()) {
+			new PerformCommandTask().execute(c);
+		} else {
+			mCommandExecutionQueue.add(c);
+		}
 	}
-
 
 	@Override
 	public void fileReceived(String _url, int _reader, int _keyset,
@@ -565,31 +700,34 @@ public class MainActivity extends Activity implements SEService.CallBack,
 		mChannelSpinner.setSelection(_securechannelset);
 
 		performCommand(APDU_COMMAND.APDU_DELETE_SENT_APPLET,
-				mReaderSpinner.getSelectedItemPosition(), null, (byte) 0, mAppletUrl);
+				mReaderSpinner.getSelectedItemPosition(), null, (byte) 0,
+				mAppletUrl);
 		performCommand(APDU_COMMAND.APDU_INSTALL,
-				mReaderSpinner.getSelectedItemPosition(), null, (byte) 0, mAppletUrl);
+				mReaderSpinner.getSelectedItemPosition(), null, (byte) 0,
+				mAppletUrl);
 
 	}
-
 
 	private class PerformCommandTask extends AsyncTask<GPCommand, Void, String> {
 		@Override
 		protected String doInBackground(GPCommand... _cmd) {
 			GPKeyset keyset = mKeysetMap.get((String) mKeysetSpinner
 					.getSelectedItem());
-			GPChannelSet channelSet = mChannelSetMap.get((String) mChannelSpinner
-					.getSelectedItem());
+			GPChannelSet channelSet = mChannelSetMap
+					.get((String) mChannelSpinner.getSelectedItem());
 
-			if(_cmd.length <= 0) return null;
-			
+			if (_cmd.length <= 0)
+				return null;
+
 			String ret = null;
-			
-			ret = GPConnection.getInstance(MainActivity.this).performCommand(mTerminal, keyset, channelSet, _cmd[0]);
+
+			ret = GPConnection.getInstance(MainActivity.this).performCommand(
+					mTerminal, keyset, channelSet, _cmd[0]);
 			return ret;
 		}
 
-		protected void onPostExecute(String _resultString){
-			MAIN_Log.d(LOG_TAG, _resultString);			
+		protected void onPostExecute(String _resultString) {
+			MAIN_Log.d(LOG_TAG, _resultString);
 		}
 	}
 
@@ -603,7 +741,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 			String[] lines = _text.split("<br>|<br/>");
 			for (String line : lines) {
 				mLog.append(Html.fromHtml("<font color=\"#ff0000\">" + _tag
-						+ "</font> : " + line + "<br>"));	
+						+ "</font> : " + line + "<br>"));
 			}
 		}
 
@@ -622,6 +760,20 @@ public class MainActivity extends Activity implements SEService.CallBack,
 		public void i(String _tag, String _text) {
 			log(_tag, _text);
 		}
+	}
+
+	public void mifareTestFinished() {
+		dismissDialog(DIALOG_MF_WAIT_FOR_FINISH);
+	}
+
+	@Override
+	public void requestTag() {
+		mTerminalWaitingForTag = true;
+	}
+
+	@Override
+	public void terminalReady() {
+		serviceConnected(null);
 	}
 
 }

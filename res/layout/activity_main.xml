@@ -140,10 +140,22 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+
+        <Button
+            android:id="@+id/btn_test_mf"
+            android:layout_width="141dp"
+            android:layout_height="wrap_content"
+            android:text="Test Mifare" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/log"
         android:layout_width="match_parent"
         android:layout_height="fill_parent"
+        android:gravity="bottom"
         android:scrollbars="vertical"
         android:text="" />
 

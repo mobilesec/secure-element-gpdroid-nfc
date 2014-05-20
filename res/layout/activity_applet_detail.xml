@@ -8,15 +8,13 @@
         android:id="@+id/detAppl_readableTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Applet AIDs"
-        android:textAlignment="viewStart"/>
+        android:text="Applet AIDs"/>
     
     <TextView
         android:id="@+id/detAppl_priviliges"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textAlignment="viewStart"
-        android:text="test"
+         android:text="test"
         android:textStyle="italic" />
 
     <TextView
@@ -24,14 +22,12 @@
         android:layout_height="wrap_content"
         android:text="Applet AIDs"
         android:paddingTop="4pt"
-        android:textStyle="bold"
-        android:textAlignment="viewStart"/>
+        android:textStyle="bold"/>
     
     <TextView
         android:id="@+id/detAppl_allIDs"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="test2"
-        android:textAlignment="viewStart"/>
+        android:text="test2"/>
 
 </LinearLayout>

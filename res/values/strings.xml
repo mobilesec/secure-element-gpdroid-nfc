@@ -52,4 +52,5 @@
     <string name="getdata_p2">P2</string>
     <string name="getdata_btn_ok">OK</string>
 	<string name="getdata_btn_cancel">Cancel</string>
+	<string name="applet_aids">Applet AIDs</string>
 </resources>
