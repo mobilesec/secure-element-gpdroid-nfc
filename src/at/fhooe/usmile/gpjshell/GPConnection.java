@@ -180,7 +180,7 @@ public class GPConnection {
 		return data;
 	}
 	
-	private void deleteApplet(AID aid) {
+	public void deleteApplet(AID aid) {
 		try {
 			deleteAID(aid);
 		} catch (GPDeleteException e) {
@@ -238,6 +238,7 @@ public class GPConnection {
 						+ mApplets.getRegistry().size()
 						+ " Applets.";
 	}
+
 	/**
 	 * Method that acquires a CardChannel from the given terminal and performs
 	 * the given GPCommand on it
@@ -249,7 +250,7 @@ public class GPConnection {
 	 */
 	public String performCommand(CardTerminal _term, GPKeyset keyset, GPChannelSet channelSet,
 			GPCommand _cmd) {
-		String ret = "";
+
 		try {
 			Card c = null;
 
@@ -271,7 +272,6 @@ public class GPConnection {
 		return null;
 	}
 
-
 	/**
 	 * Method that performs the given GPCommand on an channel
 	 * 
@@ -286,8 +286,10 @@ public class GPConnection {
 		try {
 
 			boolean closeConn = true;
-
-			initializeKeys(channel, keyset);
+			if(keyset != null && channelSet != null) {
+				initializeKeys(channel, keyset);
+			}
+			
 			open();
 
 			// opening channel with index of keyset - is unique
@@ -318,10 +320,11 @@ public class GPConnection {
 				deleteSelectedApplet();
 				ret = "Applet deleted";
 				break;
+
 			case APDU_DISPLAYAPPLETS_ONCARD:
 				ret = listApplets(_cmd.getSeekReaderName());
-				channel.close();	
-				
+				channel.close();
+
 				Intent intent = new Intent(mContext, AppletListActivity.class);
 				intent.putExtra(AppletListActivity.EXTRA_CHANNELSET, channelSet);
 				intent.putExtra(AppletListActivity.EXTRA_KEYSET, keyset);
@@ -335,6 +338,11 @@ public class GPConnection {
 				ResponseAPDU response = getData(((Integer[])_cmd.getCommandParameter())[0],((Integer[])_cmd.getCommandParameter())[1]);
 				ret = "Response: " + //TODO: write a parser 
 						GPUtils.byteArrayToString(response.getData());
+				break;
+				
+			case APDU_CMD_NONE:
+				return "GPConnection initialized";
+				
 			default:
 				break;
 			}
@@ -347,19 +355,18 @@ public class GPConnection {
 			ret = "GPSecurityDomainSelectionException " + e.getLocalizedMessage();
 			e.printStackTrace();
 		} catch (GPInstallForLoadException e) {
-			ret = "GPInstallForLoadException - Applet already installed? "+ e.getLocalizedMessage();
+			ret = "GPInstallForLoadException - Applet already installed? " + e.getLocalizedMessage();
 			e.printStackTrace();
 		} catch (CardException e) {
-			ret = "CardException "+ e.getLocalizedMessage();
+			ret = "CardException " + e.getLocalizedMessage();
 			e.printStackTrace();
 		} catch (MalformedURLException e) {
-			ret = "MalformedURLException "+ e.getLocalizedMessage();
+			ret = "MalformedURLException " + e.getLocalizedMessage();
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
-			ret= "IOException "+e.getLocalizedMessage();
+			ret = "IOException " + e.getLocalizedMessage();
 		}
 		return ret;
 	}
-
 }

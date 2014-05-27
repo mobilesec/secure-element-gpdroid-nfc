@@ -64,11 +64,24 @@ public class NfcSmartcard extends Card {
 		
 	}
 
-	public ResponseAPDU transmit(CommandAPDU cmd) throws IOException {
-		if(!mIsoDep.isConnected()) mIsoDep.connect();
+	public ResponseAPDU transmit(CommandAPDU cmd) throws IOException, CardException {
+		connect();
 		return new ResponseAPDU(mIsoDep.transceive(cmd.getBytes()));
 		
 	}
 	
+	protected void connect() throws CardException {
+		if (mIsoDep == null) {
+			throw new CardException("No tag to connect to");
+		}
+		if (!mIsoDep.isConnected()) {
+			try {
+				mIsoDep.connect();
+			} catch (IOException e) {
+				throw new CardException("Error connecting to tag");
+			}
+			mIsoDep.setTimeout(30000);
+		}
+	}
 	
 }

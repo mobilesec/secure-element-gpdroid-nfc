@@ -7,18 +7,28 @@ import javax.smartcardio.CardTerminal;
 import android.content.Context;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
+import at.fhooe.usmile.gpjshell.GPConnection;
 import at.fhooe.usmile.gpjshell.MainActivity;
+import at.fhooe.usmile.gpjshell.objects.GPAppletData;
 
 public class NfcTerminal extends GPTerminal {
 
-	private Callback mCallback = null;
 	private IsoDep mAvailableTag = null;
+	private Context mContext = null;
+	private static NfcTerminal _INSTANCE = null;
 	
-	public NfcTerminal(Callback cb) {
-		mCallback = cb;
+	
+	public static NfcTerminal getInstance(Context con) {
+		synchronized (NfcTerminal.class) {
+			if (_INSTANCE == null) {
+				_INSTANCE = new NfcTerminal(con);
+			}
+			return _INSTANCE;
+		}
+	}
 
-		mCallback.terminalReady();
-		mCallback.requestTag();
+	private NfcTerminal(Context con) {
+		mContext = con;
 	}
 	
 	public Card connect(String string) throws CardException {
@@ -35,8 +45,7 @@ public class NfcTerminal extends GPTerminal {
 
 	@Override
 	public boolean isCardPresent() throws CardException {
-		// TODO Auto-generated method stub
-		return false;
+		return mAvailableTag != null;
 	}
 
 	@Override
@@ -75,11 +84,6 @@ public class NfcTerminal extends GPTerminal {
 		return mAvailableTag != null;
 	}
 
-	public interface Callback {
-		
-		public void requestTag();
-		public void terminalReady();
-	}
 
 	public boolean passTag(Tag tag) {
 		mAvailableTag = IsoDep.get(tag);

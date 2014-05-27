@@ -11,14 +11,22 @@
  ******************************************************************************/
 package at.fhooe.usmile.gpjshell;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
+import javax.smartcardio.CardException;
 import javax.smartcardio.CardTerminal;
 
+import net.sourceforge.gpj.cardservices.AID;
+import net.sourceforge.gpj.cardservices.AIDRegistryEntry;
 import net.sourceforge.gpj.cardservices.GlobalPlatformService;
 import net.sourceforge.gpj.cardservices.interfaces.GPTerminal;
 import net.sourceforge.gpj.cardservices.interfaces.NfcTerminal;
@@ -35,6 +43,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Paint.Cap;
 import android.net.Uri;
 import android.nfc.NfcAdapter;
 import android.nfc.NfcManager;
@@ -43,6 +52,7 @@ import android.nfc.tech.MifareClassic;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.text.Html;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -57,12 +67,13 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import at.fhooe.usmile.gpjshell.db.ChannelSetDataSource;
 import at.fhooe.usmile.gpjshell.db.KeysetDataSource;
+import at.fhooe.usmile.gpjshell.objects.GPAppletData;
 import at.fhooe.usmile.gpjshell.objects.GPChannelSet;
 import at.fhooe.usmile.gpjshell.objects.GPConstants;
 import at.fhooe.usmile.gpjshell.objects.GPKeyset;
 
 public class MainActivity extends Activity implements SEService.CallBack,
-		NfcTerminal.Callback, TCPFileResultListener {
+		TCPFileResultListener {
 
 	private final static String LOG_TAG = "GPJShell";
 	public final static int ACTIVITYRESULT_FILESELECTED = 101;
@@ -70,6 +81,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	public final static int ACTIVITYRESULT_CHANNEL_SET = 103;
 	public final static int ACTIVITYRESULT_INSTALL_PARAM_SET = 104;
 	public final static int ACTIVITYRESULT_GET_DATA = 105;
+	public final static int ACTIVITYRESULT_APPLET_INSTALL_TEST = 106;
 	private TextView mLog;
 
 	// UI Elements
@@ -87,14 +99,15 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	private static LogMe MAIN_Log;
 
 	private GPTerminal mTerminal = null;
-	private Button buttonListApplet, buttonSelectApplet;
+	private Button buttonListApplet, buttonSelectApplet,
+			mButtonAppletInstallTest;
 
 	private TCPConnection mTCPConnection = null;
 	private ArrayAdapter<String> mKeysetAdapter;
 	private ArrayAdapter<String> mChannelSetAdapter;
 
 	public enum APDU_COMMAND {
-		APDU_INSTALL, APDU_DELETE_SENT_APPLET, APDU_DISPLAYAPPLETS_ONCARD, APDU_SELECT, APDU_SEND, APDU_GET_DATA, APDU_DELETE_SELECTED_APPLET
+		APDU_INSTALL, APDU_DELETE_SENT_APPLET, APDU_DISPLAYAPPLETS_ONCARD, APDU_SELECT, APDU_SEND, APDU_GET_DATA, APDU_DELETE_SELECTED_APPLET, APDU_CMD_NONE
 	}
 
 	private String mAppletUrl = null;
@@ -112,7 +125,8 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	private static final int DIALOG_MF_WAIT_FOR_TAG = 1;
 	private static final int DIALOG_MF_WAIT_FOR_FINISH = 2;
 	private MifareTest mMifareTest = null;
-	private boolean mTerminalWaitingForTag;
+
+	private Queue<Integer> mInstallStartTimes;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -287,9 +301,9 @@ public class MainActivity extends Activity implements SEService.CallBack,
 								new String[] { android.nfc.tech.IsoDep.class
 										.getName() } });
 
-		if(mTerminal == null) {
-		mTerminal = // new OpenMobileAPITerminal(this, this);
-				new NfcTerminal(this);
+		if (mTerminal == null) {
+			mTerminal = // new OpenMobileAPITerminal(this, this);
+			NfcTerminal.getInstance(this);
 		}
 		mTCPConnection = new TCPConnection(this, this);
 		Thread td = new Thread(mTCPConnection);
@@ -417,7 +431,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 				break;
 
 			case PENDING_INTENT_TECH_DISCOVERED:
-
+				MAIN_Log.d(LOG_TAG, "card discovered");
 				if (NfcAdapter.ACTION_TECH_DISCOVERED.equals(_data.getAction())) {
 					Tag tag = _data.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 					if (mWaitingForMfTest) {
@@ -425,14 +439,19 @@ public class MainActivity extends Activity implements SEService.CallBack,
 
 						runMifareTest(tag);
 					} else {
-						if (mTerminalWaitingForTag) {
-							mTerminalWaitingForTag = ((NfcTerminal) mTerminal)
-									.passTag(tag);
-							Log.d(LOG_TAG, "Card detected");
+						if (mTerminal != null) {
+							((NfcTerminal) mTerminal).passTag(tag);
+							if (mTerminal.isConnected()) {
+								serviceConnected(null);
+								Log.d(LOG_TAG, "Card detected");
+							}
 						}
 					}
 				}
 				break;
+
+			case ACTIVITYRESULT_APPLET_INSTALL_TEST:
+
 			default:
 				break;
 			}
@@ -507,6 +526,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 		buttonConnect = (Button) findViewById(R.id.btn_install_applet);
 		buttonListApplet = (Button) findViewById(R.id.btn_list_applets);
 		buttonSelectApplet = (Button) findViewById(R.id.button3);
+		mButtonAppletInstallTest = (Button) findViewById(R.id.btn_applet_test);
 
 		if (mReaderSpinner != null) {
 			List<String> list = new ArrayList<String>();
@@ -573,12 +593,75 @@ public class MainActivity extends Activity implements SEService.CallBack,
 				public void onClick(View v) {
 
 					Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-					intent.setType("file/*.cap");
+					intent.setType("file/*");
 					intent.addCategory(Intent.CATEGORY_OPENABLE);
 
 					startActivityForResult(Intent.createChooser(intent,
 							"Select a File to Upload"),
 							ACTIVITYRESULT_FILESELECTED);
+				}
+
+			});
+
+			mButtonAppletInstallTest.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					if (mTerminal.isConnected()) {
+						MAIN_Log.d(LOG_TAG, "starting applet install test");
+
+						Intent intent = new Intent(MainActivity.this,
+								AppletInstallTest.class);
+
+						performCommand(APDU_COMMAND.APDU_CMD_NONE, 0, null,
+								(byte) 0, null);
+
+						intent.putExtra(AppletInstallTest.EXTRA_RUNS, 4);
+						intent.putExtra(AppletInstallTest.EXTRA_APPLET_URI,
+								mAppletUrl);
+						GPKeyset keyset = mKeysetMap
+								.get((String) mKeysetSpinner.getSelectedItem());
+						GPChannelSet channelSet = mChannelSetMap
+								.get((String) mChannelSpinner.getSelectedItem());
+						intent.putExtra(AppletInstallTest.EXTRA_CHANNELSET,
+								channelSet);
+						intent.putExtra(AppletInstallTest.EXTRA_KEYSET, keyset);
+
+						startActivity(intent);
+
+					} else {
+						MAIN_Log.d(LOG_TAG, "No card available for test");
+					}
+
+					// mInstallStartTimes = new LinkedList<Integer>();
+					//
+					// byte[] params1 = null;
+					// byte privileges1 = 0;
+					//
+					// try {
+					// AID capAid = CAPFile.readAID(mAppletUrl);
+					// MAIN_Log.d(LOG_TAG, "AID: " + capAid.toString());
+					// mInstallStartTimes.add(new Integer((int)
+					// SystemClock.elapsedRealtime()));
+					// performCommand(APDU_COMMAND.APDU_DELETE_BY_AID,
+					// mReaderSpinner.getSelectedItemPosition(),
+					// params1, privileges1, capAid);
+					//
+					// performCommand(APDU_COMMAND.APDU_INSTALL,
+					// mReaderSpinner.getSelectedItemPosition(),
+					// params1, privileges1, mAppletUrl);
+					//
+					// performCommand(APDU_COMMAND.REPORT_END_OF_QUEUE, 0,
+					// null, (byte) 0, this);
+					//
+					// } catch (MalformedURLException e1) {
+					// // TODO Auto-generated catch block
+					// e1.printStackTrace();
+					// } catch (IOException e1) {
+					// // TODO Auto-generated catch block
+					// MAIN_Log.e(LOG_TAG, "Error while installing: ", e1);
+					// e1.printStackTrace();
+					// }
+
 				}
 
 			});
@@ -766,14 +849,11 @@ public class MainActivity extends Activity implements SEService.CallBack,
 		dismissDialog(DIALOG_MF_WAIT_FOR_FINISH);
 	}
 
-	@Override
-	public void requestTag() {
-		mTerminalWaitingForTag = true;
-	}
+	public void stopTimer() {
 
-	@Override
-	public void terminalReady() {
-		serviceConnected(null);
+		long start = mInstallStartTimes.remove();
+		MAIN_Log.d(LOG_TAG, "timer stopped: "
+				+ (SystemClock.elapsedRealtime() - start));
 	}
 
 }

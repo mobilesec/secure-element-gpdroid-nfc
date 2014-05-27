@@ -53,4 +53,5 @@
     <string name="getdata_btn_ok">OK</string>
 	<string name="getdata_btn_cancel">Cancel</string>
 	<string name="applet_aids">Applet AIDs</string>
+	<string name="title_applet_install_test">Applet Install Test</string>
 </resources>

@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="at.fhooe.usmile.gpjshell"
     android:versionCode="1"
@@ -45,6 +44,12 @@
         <activity
             android:name="at.fhooe.usmile.gpjshell.AddKeysetActivity"
             android:label="@string/title_activity_add_keyset"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Dialog" >
+        </activity>
+        <activity
+            android:name="at.fhooe.usmile.gpjshell.AppletInstallTest"
+            android:label="@string/title_applet_install_test"
             android:screenOrientation="portrait"
             android:theme="@android:style/Theme.Dialog" >
         </activity>
