@@ -37,8 +37,10 @@ import net.sourceforge.gpj.cardservices.interfaces.NfcTerminal;
 import net.sourceforge.gpj.cardservices.interfaces.OpenMobileAPITerminal;
 import android.content.Context;
 import android.content.Intent;
+import android.os.SystemClock;
 import android.provider.OpenableColumns;
 import android.util.Log;
+import at.fhooe.usmile.gpjshell.TimerLog.LogEvent;
 import at.fhooe.usmile.gpjshell.objects.GPAppletData;
 import at.fhooe.usmile.gpjshell.objects.GPChannelSet;
 import at.fhooe.usmile.gpjshell.objects.GPKeyset;
@@ -53,6 +55,8 @@ public class GPConnection {
 
 	private Context mContext;
 
+	private TimerLog mTsLog = null;
+
 	public static GPConnection getInstance(Context _con) {	
 		synchronized (GPConnection.class) {
 			if (_INSTANCE == null) {
@@ -66,7 +70,6 @@ public class GPConnection {
 		mContext = _con;
 		data = new GPAppletData(null, -1);
 	}
-
 
 	public List<AIDRegistryEntry> getRegistry() {
 		return data.getRegistry();
@@ -138,7 +141,6 @@ public class GPConnection {
 
 		return mGPService.transmit(getData);
 	}
-	
 
 	/**
 	 * Installs a selected cap-File (applet) to the smartcard. This method used
@@ -162,6 +164,8 @@ public class GPConnection {
 		CapFile cpFile = new CapFile(new URL(_appletUrl).openStream(), null);
 
 		mGPService.loadCapFile(cpFile, false, false, 255 - 16, true, false);
+		
+		logTimestamp(LogEvent.CAP_LOAD_FINISHED);
 
 		AID p = cpFile.getPackageAID();
 		Log.d(LOG_TAG, "Installing Applet with package AID " + p.toString());
@@ -169,13 +173,23 @@ public class GPConnection {
 		for (AID a : cpFile.getAppletAIDs()) {
 			mGPService.installAndMakeSelecatable(p, a, null, privileges,
 					params, null);
-
+			logTimestamp(LogEvent.APPLET_INSTALL_FINISHED);
 			Log.d(LOG_TAG, "Finished installing applet. AID: " + a.toString());
 		}
 	}
 
+	private void logTimestamp(LogEvent event) {
+		if(mTsLog != null) {
+			mTsLog.log(event);
+		}
+	}
+	
+	public void setTimestampLog(TimerLog log) {
+		mTsLog = log;
+	}
+
 	public GPAppletData loadAppletsfromCard() throws CardException {
-		data.setRegistry( mGPService.getStatus().allPackages());
+		data.setRegistry(mGPService.getStatus().allPackages());
 
 		return data;
 	}
@@ -183,6 +197,7 @@ public class GPConnection {
 	public void deleteApplet(AID aid) {
 		try {
 			deleteAID(aid);
+			logTimestamp(LogEvent.APPLET_DELETE_FINISHED);
 		} catch (GPDeleteException e) {
 			e.printStackTrace();
 		} catch (CardException e) {
@@ -218,11 +233,11 @@ public class GPConnection {
 			throw new IOException("Not a valid path or not a cap file");
 		}
 
-		String ret = "Loading Applet from " + _url+"<br/>";
+		String ret = "Loading Applet from " + _url + "<br/>";
 
 		installCapFile(_url, params, privileges);
 
-		return ret+"Installation successful";
+		return ret + "Installation successful";
 	}
 
 	/**

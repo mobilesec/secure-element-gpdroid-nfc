@@ -1,0 +1,26 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/applet_install_test"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    tools:context=".AppletInstallTest" >
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.54" >
+
+        <ProgressBar
+            android:id="@+id/applet_install_test_progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="204dp"
+            android:layout_height="130dp"
+            android:layout_gravity="center"
+            android:indeterminate="false"
+            android:minHeight="10dip" />
+
+    </FrameLayout>
+
+</LinearLayout>
