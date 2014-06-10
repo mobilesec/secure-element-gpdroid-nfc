@@ -54,6 +54,12 @@
             android:theme="@android:style/Theme.Dialog" >
         </activity>
         <activity
+            android:name="at.fhooe.usmile.gpjshell.ApduEchoTest"
+            android:label="@string/title_echo_test"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Dialog" >
+        </activity>
+        <activity
             android:name="at.fhooe.usmile.gpjshell.AddChannelSetActivity"
             android:label="@string/title_activity_add_channel_set"
             android:screenOrientation="portrait"

@@ -16,7 +16,7 @@ public class TimerLog {
 	private static final String LOG_TAG = "TsLog";
 
 	public enum LogEvent {
-		CAP_LOAD_FINISHED, APPLET_DELETE_FINISHED, APPLET_INSTALL_FINISHED
+		CAP_LOAD_FINISHED, APPLET_DELETE_FINISHED, APPLET_INSTALL_FINISHED, ECHO_TEST_FINISHED
 	};
 
 	private List<Map<LogEvent, Integer>> mDurations = null;

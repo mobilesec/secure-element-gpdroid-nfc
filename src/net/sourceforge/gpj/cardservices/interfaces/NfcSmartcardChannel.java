@@ -32,7 +32,7 @@ public class NfcSmartcardChannel extends CardChannel {
 
 	@Override
 	public ResponseAPDU transmit(CommandAPDU command) throws CardException {
-		Log.d(LOG_TAG, "Transmitting apdu" + command);
+	//	Log.d(LOG_TAG, "Transmitting apdu" + command);
 		try {
 			ResponseAPDU resp = mCard.transmit(command);
 			return resp;
@@ -52,6 +52,10 @@ public class NfcSmartcardChannel extends CardChannel {
 	@Override
 	public void close() throws CardException {
 		// do nothing
+	}
+
+	public boolean supportsExtendedLengthApdus() {
+		return mCard.supportsExtendedLengthApdus();
 	}
 
 }

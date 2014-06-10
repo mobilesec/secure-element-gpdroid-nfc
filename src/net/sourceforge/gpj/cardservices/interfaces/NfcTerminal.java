@@ -31,7 +31,7 @@ public class NfcTerminal extends GPTerminal {
 		mContext = con;
 	}
 	
-	public Card connect(String string) throws CardException {
+	public Card connect(String unused) throws CardException {
 		if(mAvailableTag != null) {
 			return new NfcSmartcard(mAvailableTag);
 		}

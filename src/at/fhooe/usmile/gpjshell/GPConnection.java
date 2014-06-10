@@ -40,6 +40,7 @@ import android.content.Intent;
 import android.os.SystemClock;
 import android.provider.OpenableColumns;
 import android.util.Log;
+import at.fhooe.usmile.gpjshell.CapInstallScript.AppletInstallDescriptor;
 import at.fhooe.usmile.gpjshell.TimerLog.LogEvent;
 import at.fhooe.usmile.gpjshell.objects.GPAppletData;
 import at.fhooe.usmile.gpjshell.objects.GPChannelSet;
@@ -57,7 +58,7 @@ public class GPConnection {
 
 	private TimerLog mTsLog = null;
 
-	public static GPConnection getInstance(Context _con) {	
+	public static GPConnection getInstance(Context _con) {
 		synchronized (GPConnection.class) {
 			if (_INSTANCE == null) {
 				_INSTANCE = new GPConnection(_con);
@@ -179,11 +180,11 @@ public class GPConnection {
 	}
 
 	private void logTimestamp(LogEvent event) {
-		if(mTsLog != null) {
+		if (mTsLog != null) {
 			mTsLog.log(event);
 		}
 	}
-	
+
 	public void setTimestampLog(TimerLog log) {
 		mTsLog = log;
 	}
@@ -193,7 +194,7 @@ public class GPConnection {
 
 		return data;
 	}
-	
+
 	public void deleteApplet(AID aid) {
 		try {
 			deleteAID(aid);
@@ -301,10 +302,10 @@ public class GPConnection {
 		try {
 
 			boolean closeConn = true;
-			if(keyset != null && channelSet != null) {
+			if (keyset != null && channelSet != null) {
 				initializeKeys(channel, keyset);
 			}
-			
+
 			open();
 
 			// opening channel with index of keyset - is unique
@@ -355,9 +356,10 @@ public class GPConnection {
 						GPUtils.byteArrayToString(response.getData());
 				break;
 				
-			case APDU_CMD_NONE:
+			case APDU_CMD_OPEN:
+				closeConn = false;
 				return "GPConnection initialized";
-				
+
 			default:
 				break;
 			}
@@ -384,4 +386,18 @@ public class GPConnection {
 		}
 		return ret;
 	}
+	
+	public ResponseAPDU transmit(CommandAPDU cmd) {
+		try {
+			return mGPService.transmit(cmd);
+		} catch (IllegalStateException e) {
+			Log.d(LOG_TAG, "Error transmitting APDU:" + e.getMessage());
+			e.printStackTrace();
+		} catch (CardException e) {
+			Log.d(LOG_TAG, "Error transmitting APDU:" + e.getMessage());
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
 }

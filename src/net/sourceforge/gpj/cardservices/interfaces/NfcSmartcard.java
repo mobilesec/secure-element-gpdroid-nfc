@@ -83,5 +83,12 @@ public class NfcSmartcard extends Card {
 			mIsoDep.setTimeout(30000);
 		}
 	}
+
+	public boolean supportsExtendedLengthApdus() {
+		if (mIsoDep == null) {
+			return false;
+		}
+		return mIsoDep.isExtendedLengthApduSupported();
+	}
 	
 }

@@ -107,7 +107,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	private ArrayAdapter<String> mChannelSetAdapter;
 
 	public enum APDU_COMMAND {
-		APDU_INSTALL, APDU_DELETE_SENT_APPLET, APDU_DISPLAYAPPLETS_ONCARD, APDU_SELECT, APDU_SEND, APDU_GET_DATA, APDU_DELETE_SELECTED_APPLET, APDU_CMD_NONE
+		APDU_INSTALL, APDU_DELETE_SENT_APPLET, APDU_DISPLAYAPPLETS_ONCARD, APDU_SELECT, APDU_SEND, APDU_GET_DATA, APDU_DELETE_SELECTED_APPLET, APDU_CMD_OPEN
 	}
 
 	private String mAppletUrl = null;
@@ -127,6 +127,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 	private MifareTest mMifareTest = null;
 
 	private Queue<Integer> mInstallStartTimes;
+	private Button mButtonEchoTest;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -527,6 +528,7 @@ public class MainActivity extends Activity implements SEService.CallBack,
 		buttonListApplet = (Button) findViewById(R.id.btn_list_applets);
 		buttonSelectApplet = (Button) findViewById(R.id.button3);
 		mButtonAppletInstallTest = (Button) findViewById(R.id.btn_applet_test);
+		mButtonEchoTest = (Button) findViewById(R.id.btn_echo_test);
 
 		if (mReaderSpinner != null) {
 			List<String> list = new ArrayList<String>();
@@ -612,10 +614,11 @@ public class MainActivity extends Activity implements SEService.CallBack,
 						Intent intent = new Intent(MainActivity.this,
 								AppletInstallTest.class);
 
-						performCommand(APDU_COMMAND.APDU_CMD_NONE, 0, null,
+						// to initialize the connection's keyset
+						performCommand(APDU_COMMAND.APDU_CMD_OPEN, 0, null,
 								(byte) 0, null);
 
-						intent.putExtra(AppletInstallTest.EXTRA_RUNS, 4);
+						intent.putExtra(AppletInstallTest.EXTRA_RUNS, 5);
 						intent.putExtra(AppletInstallTest.EXTRA_APPLET_URI,
 								mAppletUrl);
 						GPKeyset keyset = mKeysetMap
@@ -632,35 +635,28 @@ public class MainActivity extends Activity implements SEService.CallBack,
 						MAIN_Log.d(LOG_TAG, "No card available for test");
 					}
 
-					// mInstallStartTimes = new LinkedList<Integer>();
-					//
-					// byte[] params1 = null;
-					// byte privileges1 = 0;
-					//
-					// try {
-					// AID capAid = CAPFile.readAID(mAppletUrl);
-					// MAIN_Log.d(LOG_TAG, "AID: " + capAid.toString());
-					// mInstallStartTimes.add(new Integer((int)
-					// SystemClock.elapsedRealtime()));
-					// performCommand(APDU_COMMAND.APDU_DELETE_BY_AID,
-					// mReaderSpinner.getSelectedItemPosition(),
-					// params1, privileges1, capAid);
-					//
-					// performCommand(APDU_COMMAND.APDU_INSTALL,
-					// mReaderSpinner.getSelectedItemPosition(),
-					// params1, privileges1, mAppletUrl);
-					//
-					// performCommand(APDU_COMMAND.REPORT_END_OF_QUEUE, 0,
-					// null, (byte) 0, this);
-					//
-					// } catch (MalformedURLException e1) {
-					// // TODO Auto-generated catch block
-					// e1.printStackTrace();
-					// } catch (IOException e1) {
-					// // TODO Auto-generated catch block
-					// MAIN_Log.e(LOG_TAG, "Error while installing: ", e1);
-					// e1.printStackTrace();
-					// }
+				}
+
+			});
+
+			mButtonEchoTest.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					if (mTerminal.isConnected()) {
+						MAIN_Log.d(LOG_TAG, "starting echo test");
+
+						Intent intent = new Intent(MainActivity.this,
+								ApduEchoTest.class);
+
+						intent.putExtra(ApduEchoTest.EXTRA_RUNS, 1000);
+						intent.putExtra(ApduEchoTest.EXTRA_STEP_SIZE, 4);
+						intent.putExtra(ApduEchoTest.EXTRA_STEPS, 63);
+
+						startActivity(intent);
+
+					} else {
+						MAIN_Log.d(LOG_TAG, "No card available for test");
+					}
 
 				}
 

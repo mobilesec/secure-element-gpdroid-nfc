@@ -51,7 +51,7 @@ public class AppletInstallTest extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-		setContentView(R.layout.applet_install_test);
+		setContentView(R.layout.activity_applet_install_test);
 
 		mRuns = (Integer) getIntent().getSerializableExtra(EXTRA_RUNS);
 		mAppletUri = (String) getIntent()
