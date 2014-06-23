@@ -171,11 +171,27 @@ public class GPConnection {
 		AID p = cpFile.getPackageAID();
 		Log.d(LOG_TAG, "Installing Applet with package AID " + p.toString());
 
-		for (AID a : cpFile.getAppletAIDs()) {
-			mGPService.installAndMakeSelecatable(p, a, null, privileges,
-					params, null);
-			logTimestamp(LogEvent.APPLET_INSTALL_FINISHED);
-			Log.d(LOG_TAG, "Finished installing applet. AID: " + a.toString());
+		CapInstallScript inst = CapInstallScript.getFromCapFile(_appletUrl);
+
+		if (inst == null) {
+			Log.d(LOG_TAG, "Warning: no install script for CAP file found");
+			for (AID a : cpFile.getAppletAIDs()) {
+				Log.d(LOG_TAG, "params" + GPUtils.byteArrayToString(params));
+				mGPService.installAndMakeSelecatable(p, a, null, privileges,
+						params, null);
+				logTimestamp(LogEvent.APPLET_INSTALL_FINISHED);
+				Log.d(LOG_TAG,
+						"Finished installing applet. AID: " + a.toString());
+			}
+		} else {
+			for(AppletInstallDescriptor d : inst.getDescriptors()) {
+				Log.d(LOG_TAG, d.toString());
+				mGPService.installAndMakeSelecatable(p, d.getAppletAid(), d.getInstAid(), 
+						d.getPrivileges(), d.getParams(), null);
+				logTimestamp(LogEvent.APPLET_INSTALL_FINISHED);
+				Log.d(LOG_TAG,
+						"Finished installing applet. AID: " + d.getAppletAid().toString() + " to " + d.getInstAid().toString());			
+			}
 		}
 	}
 
@@ -191,7 +207,6 @@ public class GPConnection {
 
 	public GPAppletData loadAppletsfromCard() throws CardException {
 		data.setRegistry(mGPService.getStatus().allPackages());
-
 		return data;
 	}
 
@@ -350,12 +365,6 @@ public class GPConnection {
 				closeConn = false;
 				break;
 
-			case APDU_GET_DATA:
-				ResponseAPDU response = getData(((Integer[])_cmd.getCommandParameter())[0],((Integer[])_cmd.getCommandParameter())[1]);
-				ret = "Response: " + //TODO: write a parser 
-						GPUtils.byteArrayToString(response.getData());
-				break;
-				
 			case APDU_CMD_OPEN:
 				closeConn = false;
 				return "GPConnection initialized";

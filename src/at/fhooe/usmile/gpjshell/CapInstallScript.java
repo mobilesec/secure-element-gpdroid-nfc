@@ -1,16 +1,22 @@
 package at.fhooe.usmile.gpjshell;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 import android.util.Log;
 import net.sourceforge.gpj.cardservices.AID;
 
-// Fields in script are: Applet AID, Instance AID, privileges, params
+// Each line of the script contains one install descriptor.
+// Therefore, fields of a line are: 
+// <Applet AID>, <Instance AID>, <privileges>, <params>  # <comment>
+// Fields are separated by commas, spaces are ignored and can be used for better readability.
+// Everything after a # is a comment and ignored by the application
 
 public class CapInstallScript {
 	private static final String LOG_TAG = "CAP install script";
@@ -30,12 +36,13 @@ public class CapInstallScript {
 			return null;
 		String scriptUrl = capUrl.substring(0, capUrl.lastIndexOf(".cap"))
 				+ ".inst";
+		scriptUrl = scriptUrl.substring(scriptUrl.lastIndexOf("file://")+"file://".length());
 
 		BufferedReader reader = null;
 		try {
 			reader = new BufferedReader(new FileReader(scriptUrl));
 		} catch (FileNotFoundException e) {
-			Log.d(LOG_TAG, "Couldn't open install script");
+			Log.d(LOG_TAG, "Couldn't open install script " + scriptUrl);
 			return null;
 		}
 
@@ -43,6 +50,10 @@ public class CapInstallScript {
 		String line = null;
 		try {
 			while ((line = reader.readLine()) != null) {
+				if(line.contains("#")) {
+					line = line.substring(0, line.indexOf('#'));
+				}
+				
 				String[] fields = line.split(",");
 
 				if(fields.length < 4) {
@@ -53,9 +64,11 @@ public class CapInstallScript {
 				}
 				AID appletAid = new AID(GPUtils.convertHexStringToByteArray(fields[0]));
 				AID instAid = new AID(GPUtils.convertHexStringToByteArray(fields[1]));
-				byte privileges = GPUtils.convertHexStringToByteArray(fields[2])[0];
-				byte[] params = GPUtils.convertHexStringToByteArray(fields[3]);
-				
+				String privStr = (fields[2].length() % 2 == 0) ? fields[2] : ("0" + fields[2]);
+				byte privileges = GPUtils.convertHexStringToByteArray(privStr)[0];
+				String paramStr = (fields[3].length() % 2 == 0) ? fields[3] : ("0" + fields[3]);
+				byte[] params = GPUtils.convertHexStringToByteArray(paramStr);
+				params = new byte[] {(byte) 0xC9, 0x00};
 				script.addDescriptor(new AppletInstallDescriptor(appletAid, instAid, privileges, params));
 			}
 
@@ -71,16 +84,11 @@ public class CapInstallScript {
 			}
 		}
 
-		for (AppletInstallDescriptor d : script.getDescriptors()) {
-			Log.d(LOG_TAG, d.toString());
-		}
-
 		return script;
 	}
 
 	public List<AppletInstallDescriptor> getDescriptors() {
-		// TODO Auto-generated method stub
-		return null;
+		return mDescriptors;
 	}
 
 	public static class AppletInstallDescriptor {

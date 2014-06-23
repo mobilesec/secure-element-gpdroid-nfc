@@ -187,4 +187,9 @@ public class AIDRegistryEntry {
         }
         return result;
     }
+
+    public boolean isSecurityDomain() {
+        return kind == Kind.SecurityDomain ||
+               kind == Kind.IssuerSecurityDomain;
+    }
 }

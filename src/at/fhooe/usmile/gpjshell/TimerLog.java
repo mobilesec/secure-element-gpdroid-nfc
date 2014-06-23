@@ -37,14 +37,16 @@ public class TimerLog {
 	}
 
 	void log(LogEvent event) {
-		Integer duration = (int) (SystemClock.elapsedRealtime() - currentStart);
-		Log.d(LOG_TAG, "duration: " + event.toString() + ": " + duration);
+		if (mDurations.size() > 0) {
+			Integer duration = (int) (SystemClock.elapsedRealtime() - currentStart);
+			Log.d(LOG_TAG, "duration: " + event.toString() + ": " + duration);
 
-		Map<LogEvent, Integer> currentRun = mDurations
-				.get(mDurations.size() - 1);
-		currentRun.put(event, duration);
+			Map<LogEvent, Integer> currentRun = mDurations.get(mDurations
+					.size() - 1);
+			currentRun.put(event, duration);
 
-		start();
+			start();
+		}
 	}
 
 	public void writeToFile(String fileName, LogEvent[] eventsToWrite) {

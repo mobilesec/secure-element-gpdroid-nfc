@@ -18,6 +18,7 @@
         android:textStyle="italic" />
 
     <TextView
+        android:id="@+id/tv_applet_aid_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Applet AIDs"

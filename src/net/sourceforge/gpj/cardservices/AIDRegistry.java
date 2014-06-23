@@ -56,14 +56,16 @@ public class AIDRegistry implements Iterable<AIDRegistryEntry> {
     }
 
     /**
-     * Returns a list of all packages in this registry.
+     * Returns a list of all packages and security domains in this registry.
      * 
      * @return a list of all packages
+     * 
+     * @todo TODO: Refactor listing of security domains into separate method!
      */
     public List<AIDRegistryEntry> allPackages() {
         List<AIDRegistryEntry> res = new ArrayList<AIDRegistryEntry>();
         for (AIDRegistryEntry e : entries) {
-            if (e.isPackage())
+            if (e.isPackage() || e.isSecurityDomain())
                 res.add(e);
         }
         return res;

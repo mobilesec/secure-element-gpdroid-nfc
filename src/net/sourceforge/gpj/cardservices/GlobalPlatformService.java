@@ -43,6 +43,8 @@ import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 
+import android.util.Log;
+import at.fhooe.usmile.gpjshell.GPUtils;
 import net.sourceforge.gpj.cardservices.ciphers.ICipher;
 import net.sourceforge.gpj.cardservices.exceptions.GPDeleteException;
 import net.sourceforge.gpj.cardservices.exceptions.GPInstallForLoadException;
@@ -93,7 +95,7 @@ public class GlobalPlatformService implements ISO7816, APDUListener {
     public static final int DIVER_VISA2 = 1;
 
     public static final int DIVER_EMV = 2;
-    
+
     public static final byte CLA_GP = (byte) 0x80;
 
     public static final byte CLA_MAC = (byte) 0x84;
@@ -887,6 +889,16 @@ public class GlobalPlatformService implements ISO7816, APDUListener {
 
                 AIDRegistryEntry entry = new AIDRegistryEntry(aid, life_cycle,
                         privileges, kind);
+
+                // TODO: Installed applets should be added to currently selected security domain and not to every descurity domain! Or better yet: add a list of installed applet instance to the GUI.
+                if (entry.isSecurityDomain()) {
+                    List<AID> installed = getInstalledApplets();
+
+                    for (AID a : installed) {
+                        entry.addExecutableAID(a);
+                    }
+                }
+
                 registry.add(entry);
             }
         }
@@ -957,6 +969,41 @@ public class GlobalPlatformService implements ISO7816, APDUListener {
         return registry;
     }
     
+	private List<AID> getInstalledApplets() {
+		List<AID> aids = new ArrayList<AID>();
+	
+		CommandAPDU getStatus = new CommandAPDU(CLA_GP, GET_STATUS, 0x40, 0x00, new byte[] {0x4F, 0x00});
+		ResponseAPDU response = null;
+		
+		try {
+			response = transmit(getStatus);
+			notifyExchangedAPDU(getStatus, response);
+			short sw = (short) response.getSW();
+			if (sw != SW_NO_ERROR && sw != (short) 0x6310) {
+				Log.d("gps", "error retrieving installed applets");
+			}
+		} catch (IllegalStateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (CardException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		int index = 0;
+		byte[] data = response.getData();
+	
+		while (index < data.length) {
+			int len = data[index++];
+			AID aid = new AID(data, index, len);
+			aids.add(aid);
+			index += len;
+			int life_cycle = data[index++];
+			int privileges = data[index++];
+		}
+		return aids;
+	}
+
     private class KeySet {
 
         private int diversification = DIVER_NONE;

@@ -51,26 +51,31 @@ public class AppletDetailActivity extends DialogFragment {
 					public void onClick(DialogInterface dialog, int id) {
 						mListener.onDialogOkClick(AppletDetailActivity.this);
 					}
-				})
-				.setNegativeButton("Delete",
-						new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface _dialog, int id) {
-								AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-						        builder.setMessage("Are you sure you want to delete the Applet with all including AIDs?")
-						               .setPositiveButton("Yes, delete!", new DialogInterface.OnClickListener() {
-						                   public void onClick(DialogInterface dialog, int id) {
-						                       mListener.onDialogDeleteClick(AppletDetailActivity.this);
-						                   }
-						               })
-						               .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-						                   public void onClick(DialogInterface dialog, int id) {
-						                	   mListener.onDialogOkClick(AppletDetailActivity.this);
-						                   }
-						               });
-						        // Create the AlertDialog object and return it
-						        builder.create().show();
-							}
-						});
+				});
+		if (getArguments().getBoolean("isSecurityDomain")) {
+			((TextView) v.findViewById(R.id.tv_applet_aid_title))
+					.setText("Installed Application IDs");
+		} else {
+			builder.setNegativeButton("Delete",
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface _dialog, int id) {
+							AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+								builder.setMessage("Are you sure you want to delete the Applet with all including AIDs?")
+										.setPositiveButton("Yes, delete!", new DialogInterface.OnClickListener() {
+											public void onClick(DialogInterface dialog, int id) {
+												mListener.onDialogDeleteClick(AppletDetailActivity.this);
+											}
+										})
+										.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+											public void onClick(DialogInterface dialog, int id) {
+												mListener.onDialogOkClick(AppletDetailActivity.this);
+											}
+										});
+							// Create the AlertDialog object and return it
+							builder.create().show();
+						}
+					});
+		}
 		// setContentView(R.layout.activity_applet_detail);
 
 		mAppletTitle = (TextView) v.findViewById(R.id.detAppl_readableTitle);
@@ -91,9 +96,10 @@ public class AppletDetailActivity extends DialogFragment {
 
 		String aid = GPUtil.byteArrayToReadableString(data.getAID().getBytes());
 		mAppletTitle.setText("Readable string: "+ aid.substring(1, aid.length()-1));
-		mAppletPriviliges.setText(String.format("Kind: %s LifeCyc: %d Priv: 0x%02X\n", data
-				.getKind().toShortString(), data.getLifeCycleState(), data
-				.getPrivileges()));
+		mAppletPriviliges.setText(String.format("Kind: %s LifeCyc: %d Priv: 0x%02X\n",
+				data.getKind().toShortString(),
+				data.getLifeCycleState(),
+				data.getPrivileges()));
 		for (AID a : data.getExecutableAIDs()) {
 			numSpaces = (10 - a.getLength()) * 3;
 			spaces = "";

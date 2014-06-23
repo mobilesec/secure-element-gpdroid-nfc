@@ -21,6 +21,8 @@ import net.sourceforge.gpj.cardservices.GPUtil;
 
 //import org.simalliance.openmobileapi.SEService;
 
+import net.sourceforge.gpj.cardservices.interfaces.GPTerminal;
+import net.sourceforge.gpj.cardservices.interfaces.NfcTerminal;
 import android.app.Activity;
 import android.app.DialogFragment;
 import android.content.Context;
@@ -68,8 +70,7 @@ public class AppletListActivity extends Activity implements AppletDetailActivity
 			public void onItemClick(AdapterView<?> parent, final View view,
 					int position, long id) {
 				GPConnection.getInstance(getApplicationContext()).setSelectedApplet(position);
-
-				showAppletDetailsDialog();
+				showAppletDetailsDialog(mRegistry.get(position).isSecurityDomain());
 			}
 
 		});
@@ -135,10 +136,15 @@ public class AppletListActivity extends Activity implements AppletDetailActivity
 		}
 	}
 	
-	public void showAppletDetailsDialog() {
+	public void showAppletDetailsDialog(boolean isSd) {
         // Create an instance of the dialog fragment and show it
         DialogFragment dialog = new AppletDetailActivity();
         dialog.show(getFragmentManager(), "AppletDetailFragment");
+
+        Bundle bundle = new Bundle();
+        bundle.putBoolean("isSecurityDomain", isSd);
+        // set Fragmentclass Arguments
+        dialog.setArguments(bundle);
         
     }
 
@@ -147,7 +153,8 @@ public class AppletListActivity extends Activity implements AppletDetailActivity
 	public void onDialogDeleteClick(DialogFragment dialog) {
 		AID delAID= GPConnection.getInstance(getApplicationContext()).getSelectedApplet().getAID();
 		GPCommand cmd = new GPCommand(APDU_COMMAND.APDU_DELETE_SELECTED_APPLET, mSeekReader, null, (byte)0, null);
-//		GPConnection.getInstance(getApplicationContext()).performCommand(mTerminal, mKeySet, mChannelSet, cmd);
+		GPTerminal term = NfcTerminal.getInstance(getApplicationContext());
+		GPConnection.getInstance(getApplicationContext()).performCommand(term, mKeySet, mChannelSet, cmd);
 	
 		MainActivity.log().log(LOG_TAG, "Successfully removed: "+delAID);
 		
