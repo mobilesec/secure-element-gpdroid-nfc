@@ -1,4 +1,4 @@
-﻿# GPDroid-NFC -- Global Platform Card Management Tool using NFC-API for Android
+﻿# GPDroid-NFC -- Global Platform Card Management Tool using the Android NFC API
 
 This Android application is designed to manage applets on GlobalPlatform-compliant
 contactless smartcards. You can install and delete applets to and from a contactless
@@ -10,14 +10,14 @@ to use it in bulk deployment.
 
 ## DISCLAIMER
 
-Your are using this application at your own risk. Incorrect usage may cause hardware
-damages and lead to permanently broken devices. It is essential to have profound
-knowledge of smartcard GlobalPlatform, APDU-communication and the theoretical
+You are using this application at your own risk. Incorrect usage may cause hardware
+damages and may lead to permanently broken devices. It is essential to have profound
+knowledge of smartcards, Global Platform, APDU-communication and the theoretical
 background. Furthermore, you have to know the appropriate keys and secure channel
 parameters for your smartcard.
 
 *We are not responsible for any damage caused by this application, incorrect usage
-or correctness of this manual.*
+or inaccuracies in this manual.*
 
 
 
@@ -26,7 +26,8 @@ or correctness of this manual.*
 First of all, to use the application you need knowledge about smartcards and
 GlobalPlatform card management.
 
-The application itself uses the NFC-API to communicate with contactless smartcards.
+The application itself uses the Android NFC API to communicate with contactless
+smartcards.
 
 
 
@@ -53,8 +54,8 @@ available readers. After you selected the reader, it is necessary to enter the
 correct keyset for your smartcard. (NOTE: GPDroid-NFC currently only supports
 access to the ISD on most smartcards and does not support management of
 supplementary security domains.) Furthermore, the parameters for the secure channel
-have to be set in a similar way. Default parameters are preinstalled, which may not
-necessarily fit for your smartcard.
+have to be set in a similar way. *Default parameters are preinstalled, which may not
+necessarily fit for your smartcard.*
 
 
 ### 2. Keyset and Secure Channel Parameters
@@ -69,9 +70,9 @@ don’t know the ID, look into the documentation of the smartcard. You may find 
 there together with the appropriate keys. The ID value is between 0 and 255.
 
 Afterwards you have to select a version number for the keyset and you have to set
-the 3 HEX-encoded keys for your smartcard. If you don’t know them, it is strongly
-recommended to stop using the application. You may brick your smartcard by
-authenticating with wrong keys, keyset version or keyset ID.
+the 3 keys (in hexadecimal representation) for your smartcard. If you don’t know
+them, it is strongly recommended to stop using the application. You may brick your
+smartcard by authenticating with wrong keys, keyset version or keyset ID.
 
 After setting all parameters, click OK and the data will be saved to your local
 storage and will be available in the spinner. Note that you have to set the ID as
@@ -113,5 +114,5 @@ Clicking the "List Applets" button will give you a list of installed load files
 (application packages) and security domains on the card.
 
 Clicking “Get Data” will show you another screen, where you can enter the two
-parameters P1 and P2 for to issue a GET DATA APDU command. The response will be
+parameters P1 and P2 to issue a GET DATA APDU command. The response will be
 shown in the log area as a string of hexadecimal digits.
